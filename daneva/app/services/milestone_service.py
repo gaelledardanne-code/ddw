@@ -7,6 +7,10 @@ from app.domain.milestone import Milestone
 from app.repositories.milestone_repository import MilestoneRepository
 
 
+class MilestoneNotFoundError(LookupError):
+    """Raised when a milestone_id doesn't match any saved milestone."""
+
+
 class MilestoneService:
     def __init__(self, session: Session) -> None:
         self.milestones = MilestoneRepository(session)

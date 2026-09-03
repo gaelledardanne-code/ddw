@@ -49,6 +49,9 @@ class TaskService:
     def list_by_goal(self, goal_id: str) -> list[Task]:
         return self.tasks.list_by_goal(goal_id)
 
+    def list_all(self) -> list[Task]:
+        return self.tasks.list_all()
+
     def _require(self, task_id: str) -> Task:
         task = self.tasks.get(task_id)
         if task is None:

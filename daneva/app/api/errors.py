@@ -9,10 +9,14 @@ from fastapi.responses import JSONResponse
 
 from app.domain.goal import GoalLifecycleError
 from app.services.goal_service import GoalNotFoundError
+from app.services.milestone_service import MilestoneNotFoundError
+from app.services.task_service import TaskNotFoundError
 
 
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(GoalNotFoundError)
+    @app.exception_handler(TaskNotFoundError)
+    @app.exception_handler(MilestoneNotFoundError)
     async def not_found_handler(request: Request, exc: Exception) -> JSONResponse:
         return JSONResponse(status_code=404, content={"detail": str(exc)})
 
