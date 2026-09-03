@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.domain.daily_plan import DailyPlan, DailyPlanSummary, summarize_daily_plan
 from app.repositories.daily_plan_repository import DailyPlanRepository
 from app.repositories.task_repository import TaskRepository
+from app.services.task_service import TaskNotFoundError
 
 
 class DailyPlanService:
@@ -23,6 +24,8 @@ class DailyPlanService:
         return plan
 
     def add_task(self, plan_date: date, task_id: str) -> DailyPlan:
+        if self.tasks.get(task_id) is None:
+            raise TaskNotFoundError(task_id)
         plan = self.get_or_create(plan_date)
         plan.add_task(task_id)
         self.plans.save(plan)

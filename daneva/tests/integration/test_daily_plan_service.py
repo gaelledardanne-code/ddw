@@ -5,10 +5,12 @@ an empty plan for a date that doesn't have one yet, which keeps callers
 
 from datetime import date
 
+import pytest
+
 from app.domain.enums import TaskPriority
 from app.services.daily_plan_service import DailyPlanService
 from app.services.goal_service import GoalService
-from app.services.task_service import TaskService
+from app.services.task_service import TaskNotFoundError, TaskService
 
 
 def test_get_or_create_creates_a_new_plan_when_none_exists(db_session):
@@ -37,6 +39,13 @@ def test_add_task_creates_the_plan_if_needed_and_adds_the_task(db_session):
     plan = service.add_task(date(2026, 9, 3), task.id)
 
     assert plan.task_ids == [task.id]
+
+
+def test_add_task_raises_for_a_missing_task(db_session):
+    service = DailyPlanService(db_session)
+
+    with pytest.raises(TaskNotFoundError):
+        service.add_task(date(2026, 9, 3), "does-not-exist")
 
 
 def test_remove_task_removes_it_from_the_plan(db_session):

@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.daily_plans import router as daily_plans_router
 from app.api.errors import register_exception_handlers
 from app.api.goals import router as goals_router
 from app.api.habits import router as habits_router
@@ -27,3 +28,4 @@ app.include_router(goals_router)
 app.include_router(milestones_router)
 app.include_router(tasks_router)
 app.include_router(habits_router)
+app.include_router(daily_plans_router)
