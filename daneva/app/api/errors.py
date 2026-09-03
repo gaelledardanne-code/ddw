@@ -5,6 +5,7 @@ value, a disallowed field on update, ...) is always 422. Routers don't
 each need their own try/except for this."""
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.api.habits import HabitAlreadyCompletedError
@@ -31,3 +32,18 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ValueError)
     async def value_error_handler(request: Request, exc: Exception) -> JSONResponse:
         return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+    @app.exception_handler(RequestValidationError)
+    async def request_validation_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        # FastAPI's own body/path/query validation errors come back as a
+        # list of {loc, msg, type} dicts. Flatten them into the same
+        # {"detail": "<string>"} shape as every other 422 above, so
+        # clients handle one error format regardless of where the
+        # rejection happened.
+        messages = [
+            f"{'.'.join(str(part) for part in error['loc'])}: {error['msg']}"
+            for error in exc.errors()
+        ]
+        return JSONResponse(status_code=422, content={"detail": "; ".join(messages)})
