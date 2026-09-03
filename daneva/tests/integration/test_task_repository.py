@@ -83,6 +83,17 @@ def test_get_returns_none_for_a_missing_task(db_session):
     assert repo.get("does-not-exist") is None
 
 
+def test_list_all_returns_every_saved_task(db_session):
+    goal = make_goal(db_session)
+    task_repo = TaskRepository(db_session)
+    task_repo.save(Task.create(goal_id=goal.id, title="A"))
+    task_repo.save(Task.create(goal_id=goal.id, title="B"))
+
+    tasks = task_repo.list_all()
+
+    assert {t.title for t in tasks} == {"A", "B"}
+
+
 def test_list_by_goal_returns_only_that_goals_tasks(db_session):
     goal_a = make_goal(db_session)
     goal_b_repo = GoalRepository(db_session)

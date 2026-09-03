@@ -42,6 +42,16 @@ def test_get_returns_none_for_a_missing_habit(db_session):
     assert repo.get("does-not-exist") is None
 
 
+def test_list_all_returns_every_saved_habit(db_session):
+    habit_repo = HabitRepository(db_session)
+    habit_repo.save(Habit(title="Exercise"))
+    habit_repo.save(Habit(title="Journal"))
+
+    habits = habit_repo.list_all()
+
+    assert {h.title for h in habits} == {"Exercise", "Journal"}
+
+
 def test_list_by_goal_returns_only_that_goals_habits(db_session):
     goal_repo = GoalRepository(db_session)
     goal_a = Goal.create(title="Get fit")

@@ -52,6 +52,10 @@ class TaskRepository:
         model = self.session.get(TaskModel, task_id)
         return _to_domain(model) if model else None
 
+    def list_all(self) -> list[Task]:
+        models = self.session.query(TaskModel).all()
+        return [_to_domain(model) for model in models]
+
     def list_by_goal(self, goal_id: str) -> list[Task]:
         stmt = select(TaskModel).where(TaskModel.goal_id == goal_id)
         models = self.session.execute(stmt).scalars().all()
