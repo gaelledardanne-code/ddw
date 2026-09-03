@@ -11,6 +11,7 @@ from app.api.errors import register_exception_handlers
 from app.api.goals import router as goals_router
 from app.api.habits import router as habits_router
 from app.api.milestones import router as milestones_router
+from app.api.stats import router as stats_router
 from app.api.tasks import router as tasks_router
 from app.db.session import init_db
 
@@ -29,3 +30,4 @@ app.include_router(milestones_router)
 app.include_router(tasks_router)
 app.include_router(habits_router)
 app.include_router(daily_plans_router)
+app.include_router(stats_router)
