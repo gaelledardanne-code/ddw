@@ -1,5 +1,12 @@
 # PLAN.md — Daneva: Personal Hustle Planner
 
+> **Status:** all 16 slices below are built — domain, persistence,
+> services, and the full REST API, each done test-first. 268 tests,
+> 100% coverage on domain/services, ruff/mypy clean. See the git log on
+> `claude/daneva-hustle-planner-3mg6vf` for the slice-by-slice history.
+> What's next is genuinely new work: the "Future vision" items in the
+> README, none of which are built yet.
+
 ## 1. What this is
 
 Daneva turns long-term ambitions into daily action:

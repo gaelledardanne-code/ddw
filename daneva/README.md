@@ -53,7 +53,9 @@ pip install -r requirements-dev.txt
 uvicorn app.main:app --reload
 ```
 
-(Available once the API layer exists — see `PLAN.md` for slice order.)
+Then open http://127.0.0.1:8000/docs for interactive API docs. Data is
+stored in `daneva.db` (SQLite) in the working directory, created
+automatically on startup.
 
 ## Run tests
 
@@ -80,27 +82,54 @@ Every slice of behaviour is built in this order:
 
 See `PLAN.md` for the full ordered list of slices and their current status.
 
-## API overview (target shape, built incrementally)
+## API overview
+
+Interactive docs (Swagger UI) are served at `/docs` when the app is running.
 
 ```
 GET    /goals
 POST   /goals
 GET    /goals/{id}
-PATCH  /goals/{id}
-DELETE /goals/{id}
+PATCH  /goals/{id}                     # cannot change status — see below
+DELETE /goals/{id}                     # idempotent: 204 even if already gone
 GET    /goals/{id}/progress
+POST   /goals/{id}/pause
+POST   /goals/{id}/resume
+POST   /goals/{id}/complete
+POST   /goals/{id}/abandon
+
+GET    /goals/{id}/milestones
 POST   /goals/{id}/milestones
-POST   /milestones/{id}/tasks
+
 GET    /tasks
-PATCH  /tasks/{id}
-POST   /tasks/{id}/complete
-POST   /habits
+GET    /tasks/{id}
+PATCH  /tasks/{id}                     # cannot change status — see below
+POST   /tasks/{id}/complete            # returns {task, xp_awarded}
+POST   /goals/{id}/tasks               # task directly on a goal
+POST   /milestones/{id}/tasks          # task under a milestone
+
 GET    /habits
-POST   /habits/{id}/complete
-GET    /daily-plans/{date}
+POST   /habits
+POST   /habits/{id}/complete           # 409 if already completed today
+GET    /habits/{id}/streak
+
+GET    /daily-plans/{date}             # auto-creates an empty plan if none exists
 POST   /daily-plans/{date}/tasks
-GET    /stats
+DELETE /daily-plans/{date}/tasks/{task_id}
+
+GET    /stats                          # total XP, completed counts, longest streak,
+                                        # unlocked achievements
 ```
+
+Status transitions (`Goal`, `Task`) are deliberately not part of `PATCH` —
+they go through dedicated endpoints so the domain's lifecycle rules
+(app/domain/goal.py, app/domain/xp.py) can't be bypassed. Every error
+response has the same shape: `{"detail": "<message>"}`, with 404 for a
+missing resource, 409 for a conflicting state change (an illegal lifecycle
+transition, completing a habit already done today), and 422 for anything
+else invalid — the same shape whether the rejection came from FastAPI's
+own request parsing or the app's own validation (see
+`app/api/errors.py`).
 
 ## Future vision (not built in v1)
 
