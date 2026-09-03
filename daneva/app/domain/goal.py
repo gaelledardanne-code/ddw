@@ -8,7 +8,7 @@ function calls.
 import uuid
 from datetime import date
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.domain.enums import GoalCategory, GoalPriority, GoalStatus
 
@@ -35,10 +35,29 @@ class Goal(BaseModel):
             raise ValueError("title must not be blank")
         return value
 
-    @model_validator(mode="after")
-    def new_goals_always_start_active(self) -> "Goal":
-        self.status = GoalStatus.ACTIVE
-        return self
+    @classmethod
+    def create(
+        cls,
+        *,
+        title: str,
+        description: str = "",
+        category: GoalCategory = GoalCategory.OTHER,
+        priority: GoalPriority = GoalPriority.MEDIUM,
+        target_date: date | None = None,
+    ) -> "Goal":
+        """Create a brand-new goal. Always starts ACTIVE — status isn't a
+        parameter here, so a caller can't set it to anything else.
+
+        Reconstructing an existing goal (e.g. from a repository) uses the
+        plain constructor instead, which accepts any persisted status.
+        """
+        return cls(
+            title=title,
+            description=description,
+            category=category,
+            priority=priority,
+            target_date=target_date,
+        )
 
     def pause(self) -> "Goal":
         if self.status != GoalStatus.ACTIVE:

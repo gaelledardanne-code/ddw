@@ -5,11 +5,13 @@ Expected behaviour:
 - It may optionally belong to a milestone within that goal
   (`milestone_id`); when absent, the task belongs directly to the goal.
 - `title` is required and cannot be blank.
-- `status` always starts TODO regardless of caller input, mirroring how
-  a new Goal always starts ACTIVE.
+- `status` always starts TODO — `Task.create()` doesn't even accept a
+  status argument. (The plain `Task(...)` constructor still accepts any
+  status/completed_at; that's for reconstructing an existing task from
+  storage, not for creating a new one.)
 - `priority` defaults to MEDIUM, `energy_level` defaults to MEDIUM.
 - `estimated_minutes` is optional but must be positive when given.
-- `due_date` and `completed_at` are optional and unset by default.
+- `due_date` is optional and unset by default.
 """
 
 from datetime import date, datetime
@@ -21,7 +23,7 @@ from app.domain.task import Task
 
 
 def test_create_task_with_minimal_fields_applies_defaults():
-    task = Task(goal_id="goal-1", title="Write landing page copy")
+    task = Task.create(goal_id="goal-1", title="Write landing page copy")
 
     assert task.goal_id == "goal-1"
     assert task.milestone_id is None
@@ -36,22 +38,22 @@ def test_create_task_with_minimal_fields_applies_defaults():
 
 
 def test_create_task_assigns_a_unique_id():
-    task_a = Task(goal_id="goal-1", title="Write landing page copy")
-    task_b = Task(goal_id="goal-1", title="Pick a color palette")
+    task_a = Task.create(goal_id="goal-1", title="Write landing page copy")
+    task_b = Task.create(goal_id="goal-1", title="Pick a color palette")
 
     assert task_a.id
     assert task_a.id != task_b.id
 
 
 def test_create_task_can_belong_directly_to_a_goal():
-    task = Task(goal_id="goal-1", title="Write landing page copy")
+    task = Task.create(goal_id="goal-1", title="Write landing page copy")
 
     assert task.goal_id == "goal-1"
     assert task.milestone_id is None
 
 
 def test_create_task_can_belong_to_a_milestone_within_a_goal():
-    task = Task(goal_id="goal-1", milestone_id="milestone-1", title="Build website")
+    task = Task.create(goal_id="goal-1", milestone_id="milestone-1", title="Build website")
 
     assert task.goal_id == "goal-1"
     assert task.milestone_id == "milestone-1"
@@ -60,13 +62,13 @@ def test_create_task_can_belong_to_a_milestone_within_a_goal():
 @pytest.mark.parametrize("blank_title", ["", "   ", "\t"])
 def test_create_task_rejects_blank_title(blank_title):
     with pytest.raises(ValueError):
-        Task(goal_id="goal-1", title=blank_title)
+        Task.create(goal_id="goal-1", title=blank_title)
 
 
 @pytest.mark.parametrize("blank_goal_id", ["", "   "])
 def test_create_task_rejects_blank_goal_id(blank_goal_id):
     with pytest.raises(ValueError):
-        Task(goal_id=blank_goal_id, title="Write landing page copy")
+        Task.create(goal_id=blank_goal_id, title="Write landing page copy")
 
 
 def test_create_task_requires_goal_id():
@@ -74,30 +76,31 @@ def test_create_task_requires_goal_id():
         Task(title="Write landing page copy")
 
 
-def test_create_task_ignores_caller_supplied_status():
-    task = Task(goal_id="goal-1", title="Write landing page copy", status=TaskStatus.COMPLETED)
-
-    assert task.status == TaskStatus.TODO
+def test_create_task_does_not_accept_a_status_argument():
+    with pytest.raises(TypeError):
+        Task.create(goal_id="goal-1", title="Write landing page copy", status=TaskStatus.COMPLETED)
 
 
 def test_create_task_rejects_invalid_priority():
     with pytest.raises(ValueError):
-        Task(goal_id="goal-1", title="Write landing page copy", priority="urgent")
+        Task.create(goal_id="goal-1", title="Write landing page copy", priority="urgent")
 
 
 def test_create_task_rejects_invalid_energy_level():
     with pytest.raises(ValueError):
-        Task(goal_id="goal-1", title="Write landing page copy", energy_level="extreme")
+        Task.create(goal_id="goal-1", title="Write landing page copy", energy_level="extreme")
 
 
 @pytest.mark.parametrize("bad_minutes", [0, -1, -30])
 def test_create_task_rejects_non_positive_estimated_minutes(bad_minutes):
     with pytest.raises(ValueError):
-        Task(goal_id="goal-1", title="Write landing page copy", estimated_minutes=bad_minutes)
+        Task.create(
+            goal_id="goal-1", title="Write landing page copy", estimated_minutes=bad_minutes
+        )
 
 
 def test_create_task_accepts_positive_estimated_minutes():
-    task = Task(goal_id="goal-1", title="Write landing page copy", estimated_minutes=45)
+    task = Task.create(goal_id="goal-1", title="Write landing page copy", estimated_minutes=45)
 
     assert task.estimated_minutes == 45
 
@@ -105,7 +108,7 @@ def test_create_task_accepts_positive_estimated_minutes():
 def test_create_task_with_all_fields():
     due = date(2026, 10, 1)
 
-    task = Task(
+    task = Task.create(
         goal_id="goal-1",
         milestone_id="milestone-1",
         title="Build website",
@@ -123,11 +126,20 @@ def test_create_task_with_all_fields():
     assert task.due_date == due
 
 
-def test_task_completed_at_accepts_a_datetime():
+def test_task_reconstruction_accepts_any_persisted_status_and_completed_at():
+    """The plain constructor (unlike .create()) accepts any status and
+    completed_at — this is what a repository uses to rebuild a Task
+    loaded from storage."""
     completed = datetime(2026, 9, 3, 14, 30)
 
-    task = Task(goal_id="goal-1", title="Write landing page copy", completed_at=completed)
+    task = Task(
+        goal_id="goal-1",
+        title="Write landing page copy",
+        status=TaskStatus.COMPLETED,
+        completed_at=completed,
+    )
 
+    assert task.status == TaskStatus.COMPLETED
     assert task.completed_at == completed
 
 

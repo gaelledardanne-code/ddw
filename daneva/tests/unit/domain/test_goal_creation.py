@@ -5,7 +5,10 @@ Expected behaviour:
 - `title` is required and cannot be blank.
 - `category` and `priority` default to sensible values when omitted, and
   reject values outside their enum.
-- `status` always starts as ACTIVE, regardless of what the caller passes in.
+- `status` always starts as ACTIVE — `Goal.create()` doesn't even accept a
+  status argument, so a caller can't set it to anything else. (The plain
+  `Goal(...)` constructor still accepts any status; that's used to
+  reconstruct an existing goal from storage, not to create a new one.)
 - `created_date` is stamped automatically to "now"; `completed_date` starts
   unset.
 - `target_date` is optional.
@@ -20,7 +23,7 @@ from app.domain.goal import Goal
 
 
 def test_create_goal_with_minimal_fields_applies_defaults():
-    goal = Goal(title="Launch my portfolio")
+    goal = Goal.create(title="Launch my portfolio")
 
     assert goal.title == "Launch my portfolio"
     assert goal.description == ""
@@ -32,8 +35,8 @@ def test_create_goal_with_minimal_fields_applies_defaults():
 
 
 def test_create_goal_assigns_a_unique_id():
-    goal_a = Goal(title="Launch my portfolio")
-    goal_b = Goal(title="Get fit")
+    goal_a = Goal.create(title="Launch my portfolio")
+    goal_b = Goal.create(title="Get fit")
 
     assert goal_a.id
     assert goal_b.id
@@ -41,7 +44,7 @@ def test_create_goal_assigns_a_unique_id():
 
 
 def test_create_goal_stamps_created_date_today():
-    goal = Goal(title="Launch my portfolio")
+    goal = Goal.create(title="Launch my portfolio")
 
     assert goal.created_date == date.today()
 
@@ -49,13 +52,13 @@ def test_create_goal_stamps_created_date_today():
 @pytest.mark.parametrize("blank_title", ["", "   ", "\t"])
 def test_create_goal_rejects_blank_title(blank_title):
     with pytest.raises(ValueError):
-        Goal(title=blank_title)
+        Goal.create(title=blank_title)
 
 
 def test_create_goal_with_all_fields():
     target = date(2026, 12, 31)
 
-    goal = Goal(
+    goal = Goal.create(
         title="Launch my portfolio",
         description="Get 3 freelance clients by year end",
         category=GoalCategory.CAREER,
@@ -69,25 +72,32 @@ def test_create_goal_with_all_fields():
     assert goal.target_date == target
 
 
-def test_create_goal_ignores_caller_supplied_status():
-    goal = Goal(title="Launch my portfolio", status=GoalStatus.COMPLETED)
-
-    assert goal.status == GoalStatus.ACTIVE
+def test_create_goal_does_not_accept_a_status_argument():
+    with pytest.raises(TypeError):
+        Goal.create(title="Launch my portfolio", status=GoalStatus.COMPLETED)
 
 
 def test_create_goal_rejects_invalid_category():
     with pytest.raises(ValueError):
-        Goal(title="Launch my portfolio", category="not-a-real-category")
+        Goal.create(title="Launch my portfolio", category="not-a-real-category")
 
 
 def test_create_goal_rejects_invalid_priority():
     with pytest.raises(ValueError):
-        Goal(title="Launch my portfolio", priority="not-a-real-priority")
+        Goal.create(title="Launch my portfolio", priority="not-a-real-priority")
 
 
 def test_create_goal_rejects_non_date_target_date():
     with pytest.raises(ValueError):
-        Goal(title="Launch my portfolio", target_date="not-a-date")
+        Goal.create(title="Launch my portfolio", target_date="not-a-date")
+
+
+def test_goal_reconstruction_accepts_any_persisted_status():
+    """The plain constructor (unlike .create()) accepts any status — this
+    is what a repository uses to rebuild a Goal loaded from storage."""
+    goal = Goal(id="goal-1", title="Launch my portfolio", status=GoalStatus.PAUSED)
+
+    assert goal.status == GoalStatus.PAUSED
 
 
 def test_goal_category_enum_has_expected_members():

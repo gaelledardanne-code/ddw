@@ -8,7 +8,7 @@ be computed without walking through milestones.
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.domain.enums import EnergyLevel, TaskPriority, TaskStatus
 
@@ -40,7 +40,32 @@ class Task(BaseModel):
             raise ValueError("estimated_minutes must be positive")
         return value
 
-    @model_validator(mode="after")
-    def new_tasks_always_start_todo(self) -> "Task":
-        self.status = TaskStatus.TODO
-        return self
+    @classmethod
+    def create(
+        cls,
+        *,
+        goal_id: str,
+        milestone_id: str | None = None,
+        title: str,
+        description: str = "",
+        priority: TaskPriority = TaskPriority.MEDIUM,
+        energy_level: EnergyLevel = EnergyLevel.MEDIUM,
+        estimated_minutes: int | None = None,
+        due_date: date | None = None,
+    ) -> "Task":
+        """Create a brand-new task. Always starts TODO, uncompleted —
+        status and completed_at aren't parameters here.
+
+        Reconstructing an existing task (e.g. from a repository) uses the
+        plain constructor instead, which accepts any persisted status.
+        """
+        return cls(
+            goal_id=goal_id,
+            milestone_id=milestone_id,
+            title=title,
+            description=description,
+            priority=priority,
+            energy_level=energy_level,
+            estimated_minutes=estimated_minutes,
+            due_date=due_date,
+        )
