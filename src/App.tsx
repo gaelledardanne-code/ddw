@@ -23,6 +23,7 @@ import { applySunLight, mauritiusLocalToUtcDate, utcDateToMauritiusLocalInputVal
 import { fetchCurrentWeather, type WeatherData } from './weather'
 import { buildShareUrl, parseShareStateFromUrl } from './shareState'
 import { computeElevationProfile } from './elevationProfile'
+import { flyToEstate } from './cameraMotion'
 import ControlsPanel from './ControlsPanel'
 import './App.css'
 
@@ -52,10 +53,22 @@ const ESTATE_CENTER = { longitude: 57.368, latitude: -20.302 }
 export default function App() {
   const mapRef = useRef<MapRef>(null)
   const cancelledRef = useRef(false)
+  const hasFlownInRef = useRef(false)
 
   const lastHoverRef = useRef(0)
 
   const shared = useMemo(() => parseShareStateFromUrl(), [])
+
+  const targetView = useMemo(
+    () => ({
+      longitude: shared.longitude ?? ESTATE_CENTER.longitude,
+      latitude: shared.latitude ?? ESTATE_CENTER.latitude,
+      zoom: shared.zoom ?? 15,
+      pitch: shared.pitch ?? 65,
+      bearing: shared.bearing ?? -20,
+    }),
+    [shared],
+  )
 
   const [selected, setSelected] = useState<Poi | null>(null)
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(shared.timeOfDay ?? 'noon')
@@ -293,19 +306,36 @@ export default function App() {
     <Map
       ref={mapRef}
       initialViewState={{
-        longitude: shared.longitude ?? ESTATE_CENTER.longitude,
-        latitude: shared.latitude ?? ESTATE_CENTER.latitude,
-        zoom: shared.zoom ?? 15,
-        pitch: shared.pitch ?? 65,
-        bearing: shared.bearing ?? -20,
+        longitude: targetView.longitude,
+        latitude: targetView.latitude,
+        zoom: Math.max(targetView.zoom - 3, 5),
+        pitch: 15,
+        bearing: 0,
       }}
+      terrain={{ source: 'terrain-dem', exaggeration: 1.6 }}
       style={{ width: '100%', height: '100%' }}
       mapStyle={mapStyle}
       preserveDrawingBuffer
       onClick={handleMapClick}
       onMouseMove={handleMapMouseMove}
       onMouseOut={handleMapMouseLeave}
-      onLoad={() => setMapReady(true)}
+      onLoad={() => {
+        setMapReady(true)
+        const map = mapRef.current?.getMap()
+        if (map && !hasFlownInRef.current) {
+          hasFlownInRef.current = true
+          flyToEstate(
+            map,
+            {
+              center: [targetView.longitude, targetView.latitude],
+              zoom: targetView.zoom,
+              pitch: targetView.pitch,
+              bearing: targetView.bearing,
+            },
+            2600,
+          )
+        }
+      }}
       interactiveLayerIds={showOverlay ? ['terrain-zones-fill'] : []}
       cursor={measureActive || trailActive ? 'crosshair' : 'grab'}
     >
@@ -324,7 +354,12 @@ export default function App() {
           tiles={[waybackTileUrl(historicalYears.find((y) => y.year === historicalYear)!.releaseNum)]}
           tileSize={256}
         >
-          <Layer id="historical-imagery-layer" type="raster" beforeId="hillshade" />
+          <Layer
+            id="historical-imagery-layer"
+            type="raster"
+            beforeId="hillshade"
+            paint={{ 'raster-fade-duration': 500 }}
+          />
         </Source>
       )}
 
@@ -415,6 +450,19 @@ export default function App() {
           onClick={(e) => {
             e.originalEvent.stopPropagation()
             setSelected(poi)
+            const map = mapRef.current?.getMap()
+            if (map) {
+              flyToEstate(
+                map,
+                {
+                  center: [poi.longitude, poi.latitude],
+                  zoom: Math.max(map.getZoom(), 17.5),
+                  pitch: 58,
+                  bearing: map.getBearing(),
+                },
+                1400,
+              )
+            }
           }}
         >
           <div className="marker-pin" title={poi.name} />

@@ -1,4 +1,5 @@
 import type { Map as MLMap } from 'maplibre-gl'
+import { applyMoodAnimated } from './mapMood'
 
 export type TimeOfDay = 'dawn' | 'noon' | 'dusk' | 'night'
 
@@ -85,13 +86,5 @@ export function overlayColorFor(time: TimeOfDay): string {
 
 export function applyTimeOfDay(map: MLMap, time: TimeOfDay) {
   const preset = PRESETS[time]
-
-  map.setLight({
-    anchor: 'viewport',
-    color: preset.light.color,
-    intensity: preset.light.intensity,
-    position: preset.light.position,
-  })
-
-  map.setSky(preset.sky)
+  applyMoodAnimated(map, { light: preset.light, sky: preset.sky })
 }

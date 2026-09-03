@@ -1,16 +1,7 @@
 import * as SunCalc from 'suncalc'
 import type { Map as MLMap } from 'maplibre-gl'
 import { clamp, lerp, lerpHexColor, lerpRgba } from './colorUtil'
-
-interface SkyPaint {
-  'sky-color': string
-  'horizon-color': string
-  'fog-color': string
-  'fog-ground-blend': number
-  'horizon-fog-blend': number
-  'sky-horizon-blend': number
-  'atmosphere-blend': number
-}
+import { applyMoodAnimated, type SkyPaint } from './mapMood'
 
 interface Mood {
   lightColor: string
@@ -122,8 +113,7 @@ export function computeSunLight(lat: number, lon: number, date: Date): SunLightR
 
 export function applySunLight(map: MLMap, lat: number, lon: number, date: Date): SunLightResult {
   const result = computeSunLight(lat, lon, date)
-  map.setLight({ anchor: 'viewport', color: result.light.color, intensity: result.light.intensity, position: result.light.position })
-  map.setSky(result.sky)
+  applyMoodAnimated(map, { light: result.light, sky: result.sky })
   return result
 }
 
