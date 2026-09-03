@@ -10,6 +10,10 @@ from app.repositories.habit_completion_repository import HabitCompletionReposito
 from app.repositories.habit_repository import HabitRepository
 
 
+class HabitNotFoundError(LookupError):
+    """Raised when a habit_id doesn't match any saved habit."""
+
+
 class HabitService:
     def __init__(self, session: Session) -> None:
         self.habits = HabitRepository(session)
@@ -26,7 +30,14 @@ class HabitService:
     def list_all(self) -> list[Habit]:
         return self.habits.list_all()
 
+    def _require(self, habit_id: str) -> Habit:
+        habit = self.habits.get(habit_id)
+        if habit is None:
+            raise HabitNotFoundError(habit_id)
+        return habit
+
     def complete(self, habit_id: str, on_date: date | None = None) -> HabitCompletion | None:
+        self._require(habit_id)
         existing = self.completions.list_by_habit(habit_id)
         completion = record_completion(habit_id, existing, on_date=on_date)
         if completion is not None:
@@ -34,5 +45,6 @@ class HabitService:
         return completion
 
     def get_streak(self, habit_id: str) -> int:
+        self._require(habit_id)
         existing = self.completions.list_by_habit(habit_id)
         return calculate_streak([c.completed_date for c in existing])

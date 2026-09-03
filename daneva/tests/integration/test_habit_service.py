@@ -4,7 +4,9 @@ calculate_streak."""
 
 from datetime import date, timedelta
 
-from app.services.habit_service import HabitService
+import pytest
+
+from app.services.habit_service import HabitNotFoundError, HabitService
 
 
 def days_ago(n: int) -> date:
@@ -69,3 +71,17 @@ def test_get_streak_with_no_completions_is_zero(db_session):
     habit = service.create(title="Exercise")
 
     assert service.get_streak(habit.id) == 0
+
+
+def test_complete_raises_for_a_missing_habit(db_session):
+    service = HabitService(db_session)
+
+    with pytest.raises(HabitNotFoundError):
+        service.complete("does-not-exist")
+
+
+def test_get_streak_raises_for_a_missing_habit(db_session):
+    service = HabitService(db_session)
+
+    with pytest.raises(HabitNotFoundError):
+        service.get_streak("does-not-exist")
